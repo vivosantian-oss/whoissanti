@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Minecraft Bedrock Whois Chat</title>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg: rgba(10, 10, 10, 0.7);
+            --bot-bubble: rgba(40, 40, 40, 0.6);
+            --user-bubble: rgba(0, 123, 255, 0.8);
+            --input-bg: rgba(30, 30, 30, 0.6);
+            --quote-bg: rgba(50, 50, 50, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f, #1a1a2e);
+            color: #fff;
+            touch-action: manipulation;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .message {
+            max-width: 85%;
+            padding: 14px 20px;
+            border-radius: 22px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            transition: transform 0.2s ease;
+        }
+        .message:active {
+            transform: scale(0.98);
+        }
+        .bot {
+            align-self: flex-start;
+            background: var(--bot-bubble);
+            border-bottom-left-radius: 6px;
+        }
+        .user {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border-bottom-right-radius: 6px;
+        }
+        .quote {
+            background: var(--quote-bg);
+            padding: 10px 14px;
+            border-left: 4px solid var(--user-bubble);
+            margin-bottom: 12px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        #input-area {
+            display: flex;
+            padding: 12px;
+            background: var(--input-bg);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid var(--glass-border);
+            gap: 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #message-input {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            border-radius: 30px;
+            background: rgba(50, 50, 50, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 16px;
+            min-width: 0;
+            border: 1px solid var(--glass-border);
+        }
+        #message-input:focus {
+            outline: none;
+            background: rgba(60, 60, 60, 0.7);
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+        }
+        #send-btn {
+            padding: 0 28px;
+            background: var(--user-bubble);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--glass-border);
+        }
+        #send-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: inherit;
+        }
+        .context-menu {
+            position: absolute;
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 10px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            min-width: 140px;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+        .context-menu.show {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        .context-menu button {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: white;
+            text-align: left;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .context-menu button:hover {
+            background: rgba(0, 123, 255, 0.3);
+        }
+        .footer {
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            background: rgba(20, 20, 20, 0.4);
+            backdrop-filter: blur(10px);
+        }
+        @media (max-width: 600px) {
+            #chat-container { padding: 12px; }
+            .message { max-width: 90%; padding: 12px 18px; }
+            #message-input { font-size: 17px; }
+            #input-area { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container"></div>
+    <div id="input-area">
+        <input type="text" id="message-input" placeholder="Введите /whois домен или IP..." autocomplete="off">
+        <button id="send-btn">Отправить</button>
+    </div>
+    <div class="footer">Бот создан CubexTeam</div>
+
+    <div id="context-menu" class="context-menu">
+        <button id="copy-btn">Скопировать</button>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand(); // Полноэкранный режим
+        }
+
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const contextMenu = document.getElementById('context-menu');
+        const copyBtn = document.getElementById('copy-btn');
+
+        let unknownCommandCount = 0;
+        let errorMessageDiv = null;
+        let lastUserMessageText = '';
+        let loadingMessageDiv = null;
+        let currentLongPressMessage = null;
+
+        function addMessage(text, isBot = false, quoteText = null) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', isBot ? 'bot' : 'user');
+
+            if (isBot && quoteText) {
+                const quoteDiv = document.createElement('div');
+                quoteDiv.classList.add('quote');
+                quoteDiv.textContent = quoteText;
+                msgDiv.appendChild(quoteDiv);
+            }
+
+            const pre = document.createElement('pre');
+            pre.textContent = text;
+            msgDiv.appendChild(pre);
+
+            if (isBot) {
+                let pressTimer;
+                msgDiv.addEventListener('touchstart', (e) => {
+                    pressTimer = setTimeout(() => {
+                        currentLongPressMessage = msgDiv;
+                        showContextMenu(e.touches[0].clientX, e.touches[0].clientY);
+                    }, 500);
+                    e.stopPropagation();
+                });
+                msgDiv.addEventListener('touchend', () => clearTimeout(pressTimer));
+                msgDiv.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                msgDiv.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    currentLongPressMessage = msgDiv;
+                    showContextMenu(e.clientX, e.clientY);
+                });
+            }
+
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            return msgDiv;
+        }
+
+        function showContextMenu(x, y) {
+            contextMenu.style.left = `${x - 70}px`;
+            contextMenu.style.top = `${y - 60}px`;
+            contextMenu.classList.add('show');
+        }
+
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (currentLongPressMessage) {
+                const text = currentLongPressMessage.querySelector('pre').textContent;
+                navigator.clipboard.writeText(text);
+            }
+            contextMenu.classList.remove('show');
+        };
+
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.contains(e.target) && currentLongPressMessage && !currentLongPressMessage.contains(e.target)) {
+                contextMenu.classList.remove('show');
+            }
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (!contextMenu.contains(e.target) && currentLongPressMessage && !currentLongPressMessage.contains(e.target)) {
+                contextMenu.classList.remove('show');
+            }
+        });
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            lastUserMessageText = text;
+
+            const userMsgDiv = addMessage(text, false);
+
+            messageInput.value = '';
+
+            let isWrongCommand = false;
+
+            if (text.toLowerCase().startsWith('/whois ')) {
+                const address = text.slice(7).trim();
+                if (!address) {
+                    isWrongCommand = true;
+                } else {
+                    unknownCommandCount = 0;
+                    if (errorMessageDiv && errorMessageDiv.parentNode) {
+                        errorMessageDiv.remove();
+                        errorMessageDiv = null;
+                    }
+                    processWhois(address, lastUserMessageText, userMsgDiv);
+                    return;
+                }
+            } else {
+                isWrongCommand = true;
+            }
+
+            if (isWrongCommand) {
+                unknownCommandCount++;
+
+                const errorText = `Неизвестная команда. Используйте /whois <домен или IP[:порт]> (${unknownCommandCount})`;
+
+                if (errorMessageDiv && errorMessageDiv.parentNode) {
+                    errorMessageDiv.querySelector('pre').textContent = errorText;
+                } else {
+                    errorMessageDiv = addMessage(errorText, true);
+                }
+
+                userMsgDiv.after(errorMessageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        async function processWhois(originalAddress, quoteText, userMsgDiv) {
+            loadingMessageDiv = addMessage('Получаю информацию о ' + originalAddress + '...', true);
+            userMsgDiv.after(loadingMessageDiv);
+
+            let host = originalAddress.trim();
+            let specifiedPort = 19132;
+
+            if (host.includes(':')) {
+                const parts = host.split(':');
+                host = parts[0].trim();
+                specifiedPort = parseInt(parts[1]) || 19132;
+            }
+
+            let ip = host;
+
+            const isDomain = /[a-zA-Z]/.test(host) && host.includes('.');
+            let dnsResolved = true;
+
+            if (isDomain) {
+                try {
+                    const dnsRes = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`);
+                    const dnsData = await dnsRes.json();
+                    if (dnsData.Status === 0 && dnsData.Answer && dnsData.Answer.length > 0) {
+                        ip = dnsData.Answer.find(a => a.type === 1).data;
+                    } else {
+                        dnsResolved = false;
+                    }
+                } catch {
+                    dnsResolved = false;
+                }
+            }
+
+            if (isDomain && !dnsResolved) {
+                replaceLoadingWithFinal(`${originalAddress} недоступен или не отвечает.`, quoteText);
+                return;
+            }
+
+            let serverOnline = false;
+            let serverName = 'Неизвестно';
+            let version = 'Неизвестно';
+            let onlinePlayers = '0/0';
+            let motdLines = ['Нет MOTD'];
+
+            try {
+                const statusUrl = `https://api.mcsrvstat.us/bedrock/3/${encodeURIComponent(host)}${specifiedPort !== 19132 ? ':' + specifiedPort : ''}`;
+                const statusRes = await fetch(statusUrl);
+                const statusData = await statusRes.json();
+
+                if (statusData.online) {
+                    serverOnline = true;
+                    if (statusData.motd && statusData.motd.clean && statusData.motd.clean.length > 0) {
+                        serverName = statusData.motd.clean[0];
+                        motdLines = statusData.motd.clean;
+                    } else {
+                        serverName = 'Без названия';
+                    }
+                    version = statusData.version || 'Неизвестно';
+                    onlinePlayers = `${statusData.players?.online || 0}/${statusData.players?.max || 0}`;
+                }
+            } catch (e) {}
+
+            let org = 'Неизвестно';
+            let provider = 'Неизвестно';
+            let country = 'Неизвестно';
+            let city = 'Неизвестно';
+            let timezone = 'Неизвестно';
+
+            if (dnsResolved || !isDomain) {
+                const geoApis = [
+                    `https://ip-api.com/json/${ip}?fields=org,isp,as,asname,country,countryCode,city,timezone&lang=ru`,
+                    `https://api.ipwho.is/${ip}`,
+                    `https://free.freeipapi.com/api/json/${ip}`,
+                    `https://ipinfo.io/${ip}/json`,
+                    `https://ipapi.co/${ip}/json/`,
+                    `https://api.ipgeolocation.io/ipgeo?ip=${ip}`
+                ];
+
+                for (const url of geoApis) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+
+                        if (url.includes('ip-api.com')) {
+                            if (data.status === 'fail') continue;
+                            org = data.org || 'Неизвестно';
+                            provider = data.isp || data.asname || (data.as ? data.as.split(' ').slice(1).join(' ') : '') || org || 'Неизвестно';
+                            country = data.country ? `${data.country} (${data.countryCode})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipwho.is')) {
+                            if (!data.success) continue;
+                            org = data.org || data.connection?.org || 'Неизвестно';
+                            provider = data.connection?.isp || org || 'Неизвестно';
+                            country = data.country ? `${data.country} (${data.country_code})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone?.name || 'Неизвестно';
+                        } else if (url.includes('freeipapi')) {
+                            org = data.organization || 'Неизвестно';
+                            provider = data.isp || org || 'Неизвестно';
+                            country = data.countryName ? `${data.countryName} (${data.countryCode})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timeZone || 'Неизвестно';
+                        } else if (url.includes('ipinfo')) {
+                            if (data.error) continue;
+                            org = data.company?.name || (data.org ? data.org.split(' ').slice(1).join(' ') : '') || 'Неизвестно';
+                            provider = org || 'Неизвестно';
+                            country = data.country === 'RU' ? 'Russia (RU)' : (data.country || 'Неизвестно');
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipapi.co')) {
+                            org = data.org || 'Неизвестно';
+                            provider = data.asn ? data.org : org || 'Неизвестно';
+                            country = data.country_name ? `${data.country_name} (${data.country})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipgeolocation')) {
+                            if (data.message) continue;
+                            org = data.organization || 'Неизвестно';
+                            provider = data.isp || org || 'Неизвестно';
+                            country = data.country_name ? `${data.country_name} (${data.country_code2})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.time_zone?.name || 'Неизвестно';
+                        }
+
+                        if (provider !== 'Неизвестно' || org !== 'Неизвестно') break;
+                    } catch (e) {}
+                }
+            }
+
+            let response = `Информация о адресе:
+
+💻 Домен ресурса: ${originalAddress}
+👥 Организация: ${org}
+💎 Провайдер: ${provider}
+
+🌐 Страна: ${country}
+🏠 Город: ${city}
+🌍 Часовой пояс: ${timezone}`;
+
+            if (serverOnline) {
+                response += `\n\n🎮 Информация о сервере Minecraft Bedrock:
+
+📛 Название сервера: ${serverName}
+🔢 Онлайн игроков: ${onlinePlayers}
+🛠 Ядро / Версия: ${version}
+📝 MOTD:\n${motdLines.join('\n')}`;
+            } else {
+                response += `\n\n❌ Сервер Minecraft Bedrock сейчас оффлайн или недоступен по указанному адресу.`;
+            }
+
+            if (org === 'Неизвестно' && provider === 'Неизвестно') {
+                response += `\n\nℹ Это часто бывает при домашнем хостинге — провайдер скрывает данные для приватности.`;
+            }
+
+            replaceLoadingWithFinal(response, quoteText);
+        }
+
+        function replaceLoadingWithFinal(finalText, quoteText) {
+            if (loadingMessageDiv && loadingMessageDiv.parentNode) {
+                const finalMsgDiv = document.createElement('div');
+                finalMsgDiv.classList.add('message', 'bot');
+
+                if (quoteText) {
+                    const quoteDiv = document.createElement('div');
+                    quoteDiv.classList.add('quote');
+                    quoteDiv.textContent = quoteText;
+                    finalMsgDiv.appendChild(quoteDiv);
+                }
+
+                const pre = document.createElement('pre');
+                pre.textContent = finalText;
+                finalMsgDiv.appendChild(pre);
+
+                loadingMessageDiv.parentNode.replaceChild(finalMsgDiv, loadingMessageDiv);
+                loadingMessageDiv = null;
+
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            addMessage('Привет! Я бот для проверки хостинга серверов Minecraft Bedrock. Введите /whois <домен или IP> для получения информации.', true);
+        });
+    </script>
+</body>
+</html>
