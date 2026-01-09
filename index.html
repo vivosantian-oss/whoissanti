@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CubexBot Whois</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bot-bubble: rgba(40, 40, 40, 0.72);
+            --user-bubble: rgba(0, 123, 255, 0.9);
+            --input-bg: rgba(22, 22, 22, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --menu-bg: rgba(18, 18, 28, 0.90);
+            --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e, #000000);
+            color: #fff;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            z-index: 10;
+        }
+
+        .message {
+            max-width: 86%;
+            padding: 16px 22px;
+            border-radius: 26px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            animation: messageIn 0.3s ease-out forwards;
+            position: relative;
+            font-weight: 500;
+        }
+
+        @keyframes messageIn {
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .bot {
+            align-self: flex-start;
+            background: var(--bot-bubble);
+            border-bottom-left-radius: 6px;
+        }
+
+        .user {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border-bottom-right-radius: 6px;
+            color: white;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .quote {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 14px;
+            border-left: 4px solid rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* INPUT AREA */
+        #input-area {
+            display: flex;
+            flex-direction: column;
+            padding: 14px 16px 20px;
+            background: var(--input-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-top: 1px solid var(--glass-border);
+            gap: 12px;
+            z-index: 20;
+        }
+
+        #repeat-btn {
+            align-self: flex-end;
+            margin-right: 4px;
+            padding: 10px 24px;
+            background: rgba(0, 123, 255, 0.9);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+            transition: all 0.2s;
+        }
+        #repeat-btn:active { transform: scale(0.95); }
+
+        #input-row { display: flex; gap: 12px; width: 100%; align-items: center; }
+
+        #message-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            outline: none;
+            transition: 0.3s;
+        }
+        #message-input:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #send-btn {
+            width: 48px;
+            height: 48px;
+            background: #0088cc;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+        #send-btn:active { transform: scale(0.9); }
+        
+        #send-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+            margin-left: -2px;
+            margin-top: 2px;
+        }
+
+        /* MENU */
+        #menu-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #menu-btn:active { background: rgba(255,255,255,0.2); }
+
+        #menu-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: white;
+            border-radius: 2px;
+            position: absolute;
+            transition: all 0.4s var(--ease-spring);
+        }
+        #menu-btn span::before, #menu-btn span::after {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: white;
+            border-radius: 2px;
+            position: absolute;
+            transition: all 0.4s var(--ease-spring);
+        }
+        #menu-btn span::before { transform: translateY(-7px); }
+        #menu-btn span::after { transform: translateY(7px); }
+
+        #menu-btn.open span { background: transparent; }
+        #menu-btn.open span::before { transform: translateY(0) rotate(45deg); }
+        #menu-btn.open span::after { transform: translateY(0) rotate(-45deg); }
+
+        #side-menu {
+            position: absolute;
+            top: 70px;
+            right: 14px;
+            width: 240px;
+            height: auto;
+            padding: 20px;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.9) translateY(-20px);
+            transform-origin: top right;
+            transition: all 0.4s var(--ease-spring);
+            z-index: 1001;
+        }
+
+        #side-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+        }
+
+        #menu-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #menu-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .lang-group {
+            display: flex;
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 4px;
+        }
+        .lang-btn {
+            flex: 1;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            border: none;
+            padding: 8px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .lang-btn.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4px;
+        }
+        .menu-label { font-size: 16px; font-weight: 600; color: #eee; }
+
+        .toggle-switch {
+            position: relative;
+            width: 46px;
+            height: 26px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.2);
+            transition: .3s;
+            border-radius: 34px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .toggle-slider { background-color: #34c759; }
+        input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .social-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s var(--ease-spring);
+            background: rgba(255, 255, 255, 0.08); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .social-btn:hover { 
+            transform: scale(1.1); 
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .social-btn img {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        
+        .social-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 50%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+            border-radius: 18px 18px 0 0;
+            pointer-events: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 500;
+        }
+
+        #particles-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+        .particle {
+            position: absolute;
+            width: 5px; height: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
+            opacity: 0;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-10vh); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(110vh); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-container"></div>
+    <div id="menu-overlay"></div>
+
+    <button id="menu-btn"><span></span></button>
+    
+    <div id="side-menu">
+        <div class="lang-group">
+            <button class="lang-btn active" data-lang="ru">RU</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+        
+        <div class="menu-item">
+            <span class="particles-label menu-label">Частицы</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="particles-checkbox">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="social-links">
+            <a class="social-btn" href="https://t.me/cubexteam" target="_blank" id="telegram-link">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram">
+            </a>
+            <a class="social-btn" href="https://vk.com/cubexteam" target="_blank" id="vk-link">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f3/VK_Compact_Logo_%282021-present%29.svg" alt="VK">
+            </a>
+        </div>
+    </div>
+
+    <div id="chat-container"></div>
+    
+    <div id="input-area">
+        <button id="repeat-btn">Повторить запрос</button>
+        <div id="input-row">
+            <input type="text" id="message-input" placeholder="Введите /whois домен..." autocomplete="off">
+            <button id="send-btn" aria-label="Send">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 2L11 13"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <div class="footer">Бот создан CubexTeam</div>
+
+<script>
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const repeatBtn = document.getElementById('repeat-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const sideMenu = document.getElementById('side-menu');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        const particlesCheckbox = document.getElementById('particles-checkbox');
+        const particlesContainer = document.getElementById('particles-container');
+        const tgLink = document.getElementById('telegram-link');
+        const vkLink = document.getElementById('vk-link');
+
+        function openSocial(e, url) {
+            e.preventDefault();
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.openLink(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+        tgLink.onclick = (e) => openSocial(e, 'https://t.me/cubexteam');
+        vkLink.onclick = (e) => openSocial(e, 'https://vk.com/cubexteam');
+
+
+        let unknownCommandCount = 0;
+        let lastWhoisAddress = '';
+        let isProcessing = false;
+        let currentLang = 'ru';
+        let greetingMessageDiv = null;
+        let lastErrorMessageDiv = null;
+        let particlesInterval = null;
+
+        const translations = {
+            ru: {
+                greeting: 'Привет! Я бот для проверки хостинга серверов Minecraft Bedrock. Введите /whois <домен или IP> для получения информации.',
+                placeholder: 'Введите /whois домен...',
+                send: 'Отпр.',
+                repeat: 'Повторить запрос',
+                loading: '🔍 Получаю информацию о ',
+                unknownCommand: 'Неизвестная команда. Используйте /whois <домен или IP[:порт]>',
+                infoHeader: 'Информация о адресе:',
+                domain: 'Домен ресурса',
+                org: 'Организация',
+                provider: 'Провайдер',
+                country: 'Страна',
+                city: 'Город',
+                timezone: 'Часовой пояс',
+                serverHeader: 'Информация о сервере Minecraft Bedrock:',
+                serverName: 'Название сервера',
+                onlinePlayers: 'Онлайн игроков',
+                version: 'Ядро / Версия',
+                offline: 'Сервер Minecraft Bedrock сейчас оффлайн или недоступен по указанному адресу.',
+                homeHosting: 'Это часто бывает при домашном хостинге — провайдер скрывает данные для приватности.',
+                footer: 'Бот создан CubexTeam',
+                particles: 'Частицы'
+            },
+            en: {
+                greeting: 'Hello! I am a bot for checking hosting of Minecraft Bedrock servers. Enter /whois <domain or IP> to get information.',
+                placeholder: 'Enter /whois domain...',
+                send: 'Send',
+                repeat: 'Repeat request',
+                loading: '🔍 Getting information about ',
+                unknownCommand: 'Unknown command. Use /whois <domain or IP[:port]>',
+                infoHeader: 'Address information:',
+                domain: 'Resource domain',
+                org: 'Organization',
+                provider: 'Provider',
+                country: 'Country',
+                city: 'City',
+                timezone: 'Time zone',
+                serverHeader: 'Minecraft Bedrock server information:',
+                serverName: 'Server name',
+                onlinePlayers: 'Online players',
+                version: 'Core / Version',
+                offline: 'Minecraft Bedrock server is currently offline or unavailable at the specified address.',
+                homeHosting: 'This often happens with home hosting — the provider hides data for privacy.',
+                footer: 'Bot created by CubexTeam',
+                particles: 'Particles'
+            }
+        };
+
+        function t(key) { return translations[currentLang][key] || key; }
+
+        function updateUI() {
+            document.querySelector('.footer').textContent = t('footer');
+            messageInput.placeholder = t('placeholder');
+            repeatBtn.textContent = t('repeat');
+            document.querySelector('.particles-label').textContent = t('particles');
+            
+            if (greetingMessageDiv) {
+                greetingMessageDiv.querySelector('pre').textContent = t('greeting');
+            }
+        }
+
+        // --- PARTICLES ---
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            particle.style.left = Math.random() * 98 + 'vw';
+            const duration = Math.random() * 10 + 15;
+            particle.style.animationDuration = duration + 's';
+            particlesContainer.appendChild(particle);
+            setTimeout(() => { particle.remove(); }, duration * 1000);
+        }
+
+        function toggleParticles() {
+            const enabled = particlesCheckbox.checked;
+            if (enabled) {
+                for(let i=0; i<10; i++) setTimeout(createParticle, i * 300);
+                particlesInterval = setInterval(createParticle, 1200);
+            } else {
+                clearInterval(particlesInterval);
+                particlesContainer.innerHTML = '';
+            }
+        }
+
+        // --- CHAT LOGIC ---
+        function addMessage(text, isBot = false, quoteText = null) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', isBot ? 'bot' : 'user');
+
+            if (isBot && quoteText) {
+                const quoteDiv = document.createElement('div');
+                quoteDiv.classList.add('quote');
+                quoteDiv.textContent = quoteText;
+                msgDiv.appendChild(quoteDiv);
+            }
+
+            const pre = document.createElement('pre');
+            pre.textContent = text;
+            msgDiv.appendChild(pre);
+
+            chatContainer.appendChild(msgDiv);
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+            return msgDiv;
+        }
+
+        // --- RESTORED LOGIC FROM INDEX4.HTML ---
+        async function processWhois(originalAddress, specifiedPort = 19132, quoteText, userMsgDiv) {
+            isProcessing = true;
+            repeatBtn.disabled = true;
+
+            const loadingDiv = addMessage(t('loading') + originalAddress + '...', true, quoteText);
+            if (userMsgDiv) userMsgDiv.after(loadingDiv);
+            else chatContainer.appendChild(loadingDiv);
+
+            let host = originalAddress.trim();
+
+            if (host.length > 256) {
+                loadingDiv.remove();
+                addMessage('Ошибка: адрес слишком длинный.', true, quoteText);
+                isProcessing = false;
+                repeatBtn.disabled = false;
+                return;
+            }
+
+            let ip = host;
+
+            const isIPv6 = host.includes(':') && !host.includes('.') && !host.includes('[');
+            const isDomain = /[a-zA-Z]/.test(host) && host.includes('.');
+            let dnsResolved = true;
+
+            if (isDomain) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                    const dnsRes = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(host)}&type=A`, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
+                    const dnsData = await dnsRes.json();
+                    if (dnsData.Status === 0 && dnsData.Answer && dnsData.Answer.length > 0) {
+                        ip = dnsData.Answer.find(a => a.type === 1).data;
+                    } else {
+                        dnsResolved = false;
+                    }
+                } catch (err) {
+                    dnsResolved = false;
+                }
+            }
+
+            if (isDomain && !dnsResolved) {
+                loadingDiv.remove();
+                addMessage(`${originalAddress} недоступен или не отвечает.`, true, quoteText);
+                isProcessing = false;
+                repeatBtn.disabled = false;
+                return;
+            }
+
+            let serverOnline = false;
+            let serverName = 'Неизвестно';
+            let core = 'Неизвестно';
+            let onlinePlayers = '0/0';
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const statusUrl = `https://api.mcsrvstat.us/bedrock/3/${encodeURIComponent(host)}${specifiedPort !== 19132 ? ':' + specifiedPort : ''}`;
+                const statusRes = await fetch(statusUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                const statusData = await statusRes.json();
+
+                if (statusData.online) {
+                    serverOnline = true;
+                    serverName = statusData.motd?.clean?.[0] || 'Без названия';
+                    onlinePlayers = `${statusData.players?.online || 0}/${statusData.players?.max || 0}`;
+
+                    if (statusData.version) {
+                        const ver = statusData.version.toLowerCase();
+                        if (ver.includes('pocketmine')) core = 'PocketMine-MP';
+                        else if (ver.includes('nukkit')) core = 'Nukkit';
+                        else if (ver.includes('litecore')) core = 'LiteCore';
+                        else if (ver.includes('submarine')) core = 'Submarine';
+                        else if (ver.includes('bedrock')) core = 'Vanilla Bedrock';
+                        else core = statusData.version;
+                    }
+                }
+            } catch (e) {}
+
+            let org = 'Неизвестно';
+            let provider = 'Неизвестно';
+            let country = 'Неизвестно';
+            let city = 'Неизвестно';
+            let timezone = 'Неизвестно';
+
+            if (dnsResolved || !isDomain || isIPv6) {
+                const geoApis = [
+                    `https://ip-api.com/json/${ip}?fields=org,isp,as,asname,country,countryCode,city,timezone&lang=ru`,
+                    `https://api.ipwho.is/${ip}`,
+                    `https://free.freeipapi.com/api/json/${ip}`,
+                    `https://ipinfo.io/${ip}/json`,
+                    `https://ipapi.co/${ip}/json/`,
+                    `https://api.ipgeolocation.io/ipgeo?ip=${ip}`
+                ];
+
+                for (const url of geoApis) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                        const res = await fetch(url, { signal: controller.signal });
+                        clearTimeout(timeoutId);
+
+                        if (!res.ok) continue;
+                        const data = await res.json();
+
+                        if (url.includes('ip-api.com')) {
+                            if (data.status === 'fail') continue;
+                            org = data.org || 'Неизвестно';
+                            provider = data.isp || data.asname || (data.as ? data.as.split(' ').slice(1).join(' ') : '') || org || 'Неизвестно';
+                            country = data.country ? `${data.country} (${data.countryCode})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipwho.is')) {
+                            if (!data.success) continue;
+                            org = data.org || data.connection?.org || 'Неизвестно';
+                            provider = data.connection?.isp || org || 'Неизвестно';
+                            country = data.country ? `${data.country} (${data.country_code})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone?.name || 'Неизвестно';
+                        } else if (url.includes('freeipapi')) {
+                            org = data.organization || 'Неизвестно';
+                            provider = data.isp || org || 'Неизвестно';
+                            country = data.countryName ? `${data.countryName} (${data.countryCode})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timeZone || 'Неизвестно';
+                        } else if (url.includes('ipinfo')) {
+                            if (data.error) continue;
+                            org = data.company?.name || (data.org ? data.org.split(' ').slice(1).join(' ') : '') || 'Неизвестно';
+                            provider = org || 'Неизвестно';
+                            country = data.country === 'RU' ? 'Russia (RU)' : (data.country || 'Неизвестно');
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipapi.co')) {
+                            org = data.org || 'Неизвестно';
+                            provider = data.asn ? data.org : org || 'Неизвестно';
+                            country = data.country_name ? `${data.country_name} (${data.country})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.timezone || 'Неизвестно';
+                        } else if (url.includes('ipgeolocation')) {
+                            if (data.message) continue;
+                            org = data.organization || 'Неизвестно';
+                            provider = data.isp || org || 'Неизвестно';
+                            country = data.country_name ? `${data.country_name} (${data.country_code2})` : 'Неизвестно';
+                            city = data.city || 'Неизвестно';
+                            timezone = data.time_zone?.name || 'Неизвестно';
+                        }
+
+                        if (provider !== 'Неизвестно' || org !== 'Неизвестно') break;
+                    } catch (e) {}
+                }
+            }
+
+            let response = `${t('infoHeader')}\n\n💻 ${t('domain')}: ${originalAddress}${specifiedPort !== 19132 ? ':' + specifiedPort : ''}\n👥 ${t('org')}: ${org}\n💎 ${t('provider')}: ${provider}\n\n🌐 ${t('country')}: ${country}\n🏠 ${t('city')}: ${city}\n🌍 ${t('timezone')}: ${timezone}`;
+
+            if (serverOnline) {
+                response += `\n\n🎮 ${t('serverHeader')}:\n\n📛 ${t('serverName')}: ${serverName}\n🔢 ${t('onlinePlayers')}: ${onlinePlayers}\n🛠 ${t('version')}: ${core}`;
+            } else {
+                response += `\n\n❌ ${t('offline')}`;
+            }
+
+            if (org === 'Неизвестно' && provider === 'Неизвестно') {
+                response += `\n\nℹ ${t('homeHosting')}`;
+            }
+
+            loadingDiv.remove();
+            addMessage(response, true, quoteText);
+            isProcessing = false;
+            repeatBtn.disabled = false;
+        }
+
+        // --- HANDLERS ---
+        function handleSend(isRepeat = false) {
+            let text;
+            if (isRepeat) {
+                if (!lastWhoisAddress || isProcessing) return;
+                text = `/whois ${lastWhoisAddress}`;
+            } else {
+                text = messageInput.value.trim();
+                if (!text || isProcessing) return;
+                messageInput.value = '';
+            }
+
+            const userMsg = addMessage(text, false);
+
+            if (text.toLowerCase().startsWith('/whois ')) {
+                let address = text.slice(7).trim();
+                let port = 19132;
+                
+                if (address.includes(']:')) {
+                    const parts = address.split(']:');
+                    address = parts[0].replace('[', '');
+                    port = parseInt(parts[1]) || 19132;
+                } else if (address.includes(':') && !address.includes('[')) {
+                     const parts = address.split(':');
+                     if (parts.length === 2) {
+                         address = parts[0];
+                         port = parseInt(parts[1]) || 19132;
+                     }
+                }
+
+                lastWhoisAddress = address + (port !== 19132 ? `:${port}` : '');
+                if (!isRepeat) repeatBtn.style.display = 'block';
+                
+                processWhois(address, port, text, userMsg);
+            } else {
+                unknownCommandCount++;
+                const errText = `${t('unknownCommand')} (${unknownCommandCount})`;
+
+                if (lastErrorMessageDiv && lastErrorMessageDiv.parentNode) {
+                    lastErrorMessageDiv.innerHTML = '';
+                    const quoteDiv = document.createElement('div');
+                    quoteDiv.classList.add('quote');
+                    quoteDiv.textContent = text;
+                    lastErrorMessageDiv.appendChild(quoteDiv);
+                    const pre = document.createElement('pre');
+                    pre.textContent = errText;
+                    lastErrorMessageDiv.appendChild(pre);
+                    chatContainer.appendChild(lastErrorMessageDiv);
+                    requestAnimationFrame(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
+                } else {
+                    lastErrorMessageDiv = addMessage(errText, true, text);
+                }
+            }
+        }
+
+        sendBtn.addEventListener('click', () => handleSend(false));
+        repeatBtn.addEventListener('click', () => handleSend(true));
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSend(false);
+            }
+        });
+
+        function toggleMenu() {
+            sideMenu.classList.toggle('open');
+            menuBtn.classList.toggle('open');
+            menuOverlay.classList.toggle('open');
+        }
+
+        menuBtn.onclick = toggleMenu;
+        menuOverlay.onclick = toggleMenu;
+
+        langBtns.forEach(btn => {
+            btn.onclick = () => {
+                currentLang = btn.dataset.lang;
+                langBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updateUI();
+                toggleMenu();
+            };
+        });
+
+        particlesCheckbox.addEventListener('change', toggleParticles);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            greetingMessageDiv = addMessage(t('greeting'), true);
+            updateUI();
+        });
+    </script>
+</body>
+</html>
