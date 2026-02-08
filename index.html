@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CubeWhois</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+html{height:100%;overflow:hidden}
+body{
+font-family:'Inter',system-ui,-apple-system,sans-serif;
+background:#08090d;
+color:#c8cad0;
+height:100vh;
+height:100dvh;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+position:fixed;
+width:100%;
+top:0;left:0;
+}
+
+.header{
+flex:0 0 auto;
+height:56px;
+padding:0 16px;
+background:rgba(12,14,20,0.95);
+backdrop-filter:blur(20px);
+-webkit-backdrop-filter:blur(20px);
+border-bottom:1px solid rgba(60,130,246,0.12);
+display:flex;
+align-items:center;
+gap:12px;
+z-index:10;
+}
+
+.logo-cube{
+width:36px;height:36px;min-width:36px;
+position:relative;
+filter:drop-shadow(0 0 8px rgba(60,130,246,0.2));
+}
+
+.logo-cube svg{width:100%;height:100%}
+
+.header-text{min-width:0;overflow:hidden}
+
+.logo-name{
+font-size:16px;
+font-weight:700;
+color:#e8eaf0;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+letter-spacing:-0.3px;
+display:inline-block;
+background:linear-gradient(90deg,#e8eaf0 0%,#e8eaf0 30%,rgba(140,185,255,0.9) 50%,#e8eaf0 70%,#e8eaf0 100%);
+background-size:300% 100%;
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+background-clip:text;
+animation:glassWave 6s ease-in-out infinite;
+}
+
+@keyframes glassWave{
+0%{background-position:300% 0}
+100%{background-position:-300% 0}
+}
+
+.logo-desc{font-size:10px;color:#4a5568;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px}
+
+.chat-area{
+flex:1 1 0%;
+min-height:0;
+overflow-y:auto;
+overflow-x:hidden;
+-webkit-overflow-scrolling:touch;
+overscroll-behavior:contain;
+padding:16px;
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+.chat-area::-webkit-scrollbar{width:3px}
+.chat-area::-webkit-scrollbar-track{background:transparent}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(60,130,246,0.15);border-radius:3px}
+
+.msg{max-width:600px;animation:fadeUp 0.25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.msg.user{align-self:flex-end}
+.msg.bot{align-self:flex-start;width:100%;max-width:600px}
+
+.msg-label{
+font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;
+color:#3a4255;margin-bottom:4px;
+}
+.msg.user .msg-label{text-align:right}
+
+.msg-body{
+padding:12px 14px;
+border-radius:10px;
+font-size:13px;
+line-height:1.7;
+word-break:break-word;
+}
+
+.msg.user .msg-body{
+background:rgba(20,25,40,0.7);
+backdrop-filter:blur(12px);
+-webkit-backdrop-filter:blur(12px);
+border:1px solid rgba(60,130,246,0.15);
+border-radius:10px 10px 2px 10px;
+color:#8b9cc0;
+box-shadow:0 2px 12px rgba(0,0,0,0.2),inset 0 1px 0 rgba(60,130,246,0.06);
+}
+
+.msg.bot .msg-body{
+background:rgba(14,18,30,0.75);
+backdrop-filter:blur(12px);
+-webkit-backdrop-filter:blur(12px);
+border:1px solid rgba(60,130,246,0.14);
+border-radius:10px 10px 10px 2px;
+color:#a0adc4;
+box-shadow:0 2px 16px rgba(0,0,0,0.25),inset 0 1px 0 rgba(60,130,246,0.05);
+}
+
+.msg-body.err{border-left:2px solid #c0392b}
+.msg-body.bedrock-ok{border-left:2px solid #d4851f}
+.msg-body.java-ok{border-left:2px solid #3c82f6}
+
+.msg-body .title{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
+.msg-body .title.online-bedrock{color:#d4961f}
+.msg-body .title.online-java{color:#5b9ef5}
+.msg-body .title.fail{color:#c0392b}
+
+.msg-body .sep{display:block;height:1px;background:rgba(60,130,246,0.08);margin:6px 0}
+
+.msg-body .row{
+display:block;
+padding:2px 0;
+opacity:0;
+animation:rowIn 0.15s ease forwards;
+font-size:12.5px;
+}
+
+@keyframes rowIn{to{opacity:1}}
+
+.msg-body .ip{
+color:#5b9ef5;
+font-family:'JetBrains Mono',monospace;
+font-size:11.5px;
+background:rgba(60,130,246,0.08);
+padding:1px 5px;
+border-radius:3px;
+}
+
+.msg-body .ver{
+color:#5bbd6b;
+font-family:'JetBrains Mono',monospace;
+font-size:11.5px;
+}
+
+.msg-body .hl{color:#b0b8cc;font-weight:500}
+
+.welcome-cmds{margin-top:8px}
+
+.cmd-row{
+display:flex;
+align-items:center;
+gap:6px;
+padding:7px 11px;
+margin:3px 0;
+background:rgba(60,130,246,0.04);
+border:1px solid rgba(60,130,246,0.1);
+border-radius:6px;
+font-family:'JetBrains Mono',monospace;
+font-size:11.5px;
+color:#5b9ef5;
+cursor:pointer;
+transition:all 0.15s;
+}
+.cmd-row:hover{background:rgba(60,130,246,0.08);border-color:rgba(60,130,246,0.18)}
+.cmd-row:active{background:rgba(60,130,246,0.12)}
+.cmd-row .desc{color:#4a5568;font-family:'Inter',sans-serif;font-size:11px}
+
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dots span{
+width:4px;height:4px;border-radius:50%;background:#3c82f6;
+animation:pulse 1.2s ease-in-out infinite;
+}
+.dots span:nth-child(2){animation-delay:0.15s}
+.dots span:nth-child(3){animation-delay:0.3s}
+@keyframes pulse{
+0%,80%,100%{opacity:0.25;transform:scale(0.85)}
+40%{opacity:0.85;transform:scale(1)}
+}
+
+.input-bar{
+flex:0 0 auto;
+padding:10px 16px;
+padding-bottom:max(10px,env(safe-area-inset-bottom));
+background:rgba(10,12,18,0.95);
+backdrop-filter:blur(20px);
+-webkit-backdrop-filter:blur(20px);
+border-top:1px solid rgba(60,130,246,0.12);
+z-index:10;
+}
+
+.input-row{
+display:flex;
+gap:8px;
+max-width:600px;
+margin:0 auto;
+}
+
+.input-field{
+flex:1;
+min-width:0;
+background:rgba(16,20,32,0.8);
+border:1px solid rgba(60,130,246,0.12);
+border-radius:8px;
+padding:11px 13px;
+font-size:14px;
+font-family:'Inter',sans-serif;
+color:#d0d5e2;
+outline:none;
+transition:border-color 0.2s,box-shadow 0.2s;
+caret-color:#5b9ef5;
+}
+.input-field::placeholder{color:#2e3548}
+.input-field:focus{
+border-color:rgba(60,130,246,0.3);
+box-shadow:0 0 0 3px rgba(60,130,246,0.06);
+}
+
+.send-btn{
+width:42px;min-width:42px;height:42px;
+border-radius:8px;
+background:rgba(60,130,246,0.15);
+border:1px solid rgba(60,130,246,0.2);
+cursor:pointer;
+display:flex;align-items:center;justify-content:center;
+transition:all 0.15s;
+}
+.send-btn:hover{background:rgba(60,130,246,0.25);border-color:rgba(60,130,246,0.35)}
+.send-btn:active{transform:scale(0.93);background:rgba(60,130,246,0.3)}
+.send-btn:disabled{opacity:0.25;cursor:default;transform:none}
+.send-btn svg{width:16px;height:16px;fill:#5b9ef5}
+
+.plugins-list{margin-top:3px;padding-left:18px}
+.plugins-list li{font-size:11.5px;color:#6b7a94;padding:1px 0}
+
+.plugins-toggle{
+display:inline-block;
+margin-top:4px;
+padding:4px 10px;
+background:rgba(60,130,246,0.06);
+border:1px solid rgba(60,130,246,0.12);
+border-radius:5px;
+color:#5b9ef5;
+font-size:11px;
+font-family:'Inter',sans-serif;
+font-weight:500;
+cursor:pointer;
+transition:all 0.15s;
+}
+.plugins-toggle:hover{background:rgba(60,130,246,0.12);border-color:rgba(60,130,246,0.2)}
+.plugins-toggle:active{transform:scale(0.96)}
+
+.plugins-hidden{
+overflow:hidden;
+height:0;
+}
+
+.players-inline{
+margin-top:2px;
+font-size:11.5px;
+color:#6b7a94;
+padding-left:18px;
+}
+
+.retry-btn{
+display:inline-block;
+margin-top:8px;
+padding:6px 14px;
+background:rgba(60,130,246,0.08);
+border:1px solid rgba(60,130,246,0.15);
+border-radius:6px;
+color:#5b9ef5;
+font-size:11.5px;
+font-family:'Inter',sans-serif;
+font-weight:500;
+cursor:pointer;
+transition:all 0.15s;
+}
+.retry-btn:hover{background:rgba(60,130,246,0.14);border-color:rgba(60,130,246,0.25)}
+.retry-btn:active{transform:scale(0.96)}
+
+@media(max-width:480px){
+.header{height:50px;padding:0 12px;gap:10px}
+.logo-cube{width:30px;height:30px;min-width:30px}
+.logo-name{font-size:14px}
+.logo-desc{display:none}
+.chat-area{padding:10px 10px;gap:10px}
+.msg-body{padding:10px 12px;font-size:12px}
+.msg-body .row{font-size:11.5px}
+.input-bar{padding:8px 10px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.input-field{padding:10px 12px;font-size:14px}
+.send-btn{width:40px;min-width:40px;height:40px}
+}
+
+@media(max-height:500px){
+.header{height:42px}
+.chat-area{padding:8px}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+<div class="logo-cube">
+<svg viewBox="0 0 100 100" fill="none">
+<path d="M50 10L85 28V64L50 82L15 64V28L50 10Z" fill="#0e1220" stroke="rgba(60,130,246,0.35)" stroke-width="2"/>
+<path d="M50 10L85 28L50 46L15 28L50 10Z" fill="#141c32"/>
+<path d="M50 46L85 28V64L50 82V46Z" fill="#0c1222"/>
+<path d="M50 46V82L15 64V28L50 46Z" fill="#101828"/>
+<path d="M50 20L73 32L50 44L27 32L50 20Z" fill="rgba(60,130,246,0.12)"/>
+<rect x="30" y="30" width="8" height="8" rx="1" fill="rgba(60,130,246,0.2)" transform="rotate(-30 34 34)"/>
+<rect x="55" y="28" width="6" height="6" rx="1" fill="rgba(60,130,246,0.15)" transform="rotate(-30 58 31)"/>
+<rect x="35" y="52" width="7" height="7" rx="1" fill="rgba(60,130,246,0.12)" transform="rotate(15 38.5 55.5)"/>
+<rect x="52" y="54" width="5" height="5" rx="1" fill="rgba(60,130,246,0.1)" transform="rotate(15 54.5 56.5)"/>
+<line x1="50" y1="46" x2="50" y2="82" stroke="rgba(60,130,246,0.08)" stroke-width="1"/>
+<line x1="50" y1="46" x2="85" y2="28" stroke="rgba(60,130,246,0.06)" stroke-width="1"/>
+<line x1="50" y1="46" x2="15" y2="28" stroke="rgba(60,130,246,0.06)" stroke-width="1"/>
+</svg>
+</div>
+<div class="header-text">
+<div class="logo-name">CubeWhois</div>
+<div class="logo-desc">Поиск серверов Minecraft</div>
+</div>
+</header>
+
+<div class="chat-area" id="chat"></div>
+
+<div class="input-bar" id="inputBar">
+<div class="input-row">
+<input type="text" class="input-field" id="inp" placeholder="Введите /mcbe или /mcja ip:port" autocomplete="off" spellcheck="false" autocapitalize="off" enterkeyhint="send">
+<button class="send-btn" id="sendBtn">
+<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+</button>
+</div>
+</div>
+
+<script>
+var chat=document.getElementById('chat');
+var inp=document.getElementById('inp');
+var sendBtn=document.getElementById('sendBtn');
+var inputBar=document.getElementById('inputBar');
+var busy=false;
+var lastCmd=null;
+var tgApp=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
+
+if(tgApp){
+try{
+tgApp.ready();
+tgApp.expand();
+if(tgApp.headerColor)tgApp.setHeaderColor('#08090d');
+if(tgApp.backgroundColor)tgApp.setBackgroundColor('#08090d');
+}catch(e){}
+}
+
+var PROXIES=[
+'',
+'https://api.allorigins.win/raw?url=',
+'https://api.codetabs.com/v1/proxy?quest=',
+'https://corsproxy.io/?'
+];
+
+function esc(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML}
+
+function stripMc(t){
+if(!t)return '';
+return t.replace(/\u00A7[0-9a-fk-or]/gi,'').replace(/§[0-9a-fk-or]/gi,'');
+}
+
+function getMotd(m){
+if(!m)return '';
+if(typeof m==='object'&&m.clean){
+return Array.isArray(m.clean)?m.clean.join('\n'):String(m.clean);
+}
+if(typeof m==='object'&&m.raw){
+var r=Array.isArray(m.raw)?m.raw.join('\n'):String(m.raw);
+return stripMc(r);
+}
+if(typeof m==='string')return stripMc(m);
+if(Array.isArray(m))return stripMc(m.join('\n'));
+return String(m);
+}
+
+function scrollDown(){
+requestAnimationFrame(function(){chat.scrollTop=chat.scrollHeight});
+}
+
+function addMsg(html,type,extra){
+var el=document.createElement('div');
+el.className='msg '+type;
+var lbl=type==='user'?'Вы':'CubeWhois';
+var cls='msg-body';
+if(extra)cls+=' '+extra;
+el.innerHTML='<div class="msg-label">'+lbl+'</div><div class="'+cls+'">'+html+'</div>';
+chat.appendChild(el);
+scrollDown();
+return el;
+}
+
+function addLoading(){
+var el=document.createElement('div');
+el.className='msg bot';
+el.id='loadMsg';
+el.innerHTML='<div class="msg-label">CubeWhois</div><div class="msg-body"><div class="dots"><span></span><span></span><span></span></div> Поиск информации...</div>';
+chat.appendChild(el);
+scrollDown();
+}
+
+function removeLoading(){
+var el=document.getElementById('loadMsg');
+if(el)el.remove();
+}
+
+function animRows(container){
+var rows=container.querySelectorAll('.row');
+for(var i=0;i<rows.length;i++){
+rows[i].style.animationDelay=(i*50)+'ms';
+}
+}
+
+function welcome(){
+var h='<span class="title" style="color:#d0d5e2;">Добро пожаловать в CubeWhois</span>'+
+'<span class="sep"></span>'+
+'<span style="font-size:12px;color:#5a6580;">Доступные команды:</span>'+
+'<div class="welcome-cmds">'+
+'<div class="cmd-row" data-c="/mcbe ">/mcbe ip:port <span class="desc">— Bedrock сервер</span></div>'+
+'<div class="cmd-row" data-c="/mcja ">/mcja ip:port <span class="desc">— Java сервер</span></div>'+
+'</div>';
+var m=addMsg(h,'bot');
+m.querySelectorAll('.cmd-row').forEach(function(r){
+r.addEventListener('click',function(){
+inp.value=r.getAttribute('data-c');
+inp.focus();
+});
+});
+}
+
+function parseCmd(text){
+var t=text.trim();
+if(!t.startsWith('/'))return{ok:false,unknown:true};
+var p=t.split(/\s+/);
+var c=p[0].toLowerCase();
+if(c!=='/mcbe'&&c!=='/mcja')return{ok:false,unknown:true};
+if(p.length<2)return{ok:false,noAddr:true,cmd:c};
+var a=p[1];
+var host,port;
+if(a.includes(':')){
+var s=a.split(':');
+host=s[0];
+port=parseInt(s[1],10);
+if(isNaN(port))port=c==='/mcbe'?19132:25565;
+}else{
+host=a;
+port=c==='/mcbe'?19132:25565;
+}
+return{ok:true,type:c==='/mcbe'?'bedrock':'java',host:host,port:port};
+}
+
+async function fetchWithProxy(url,timeout){
+for(var i=0;i<PROXIES.length;i++){
+try{
+var fullUrl=PROXIES[i]?PROXIES[i]+encodeURIComponent(url):url;
+var ctrl=new AbortController();
+var timer=setTimeout(function(){ctrl.abort()},timeout||12000);
+var r=await fetch(fullUrl,{signal:ctrl.signal});
+clearTimeout(timer);
+if(r.ok){
+var data=await r.json();
+return data;
+}
+}catch(e){}
+}
+return null;
+}
+
+async function tryFetch(url,timeout){
+try{
+var ctrl=new AbortController();
+var timer=setTimeout(function(){ctrl.abort()},timeout||12000);
+var r=await fetch(url,{signal:ctrl.signal});
+clearTimeout(timer);
+if(r.ok)return await r.json();
+}catch(e){}
+return null;
+}
+
+function isDomain(host){
+return host&&!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+}
+
+async function queryServer(type,host,port){
+var results=[];
+var defPort=type==='bedrock'?19132:25565;
+var hostIsDomain=isDomain(host);
+
+var apis=[];
+
+if(type==='bedrock'){
+apis.push({base:'https://api.mcsrvstat.us/bedrock/3/',src:'mcsrvstat'});
+apis.push({base:'https://api.mcstatus.io/v2/status/bedrock/',src:'mcstatus'});
+apis.push({base:'https://api.mcsrvstat.us/bedrock/2/',src:'mcsrvstat2'});
+}else{
+apis.push({base:'https://api.mcsrvstat.us/3/',src:'mcsrvstat'});
+apis.push({base:'https://api.mcstatus.io/v2/status/java/',src:'mcstatus'});
+apis.push({base:'https://api.mcsrvstat.us/2/',src:'mcsrvstat2'});
+}
+
+var allFetches=[];
+
+for(var a=0;a<apis.length;a++){
+if(hostIsDomain){
+allFetches.push({url:apis[a].base+host,src:apis[a].src,proxy:false});
+allFetches.push({url:apis[a].base+host+':'+port,src:apis[a].src,proxy:false});
+if(port!==defPort){
+allFetches.push({url:apis[a].base+host+':'+defPort,src:apis[a].src,proxy:false});
+}
+}else{
+allFetches.push({url:apis[a].base+host+':'+port,src:apis[a].src,proxy:false});
+if(port!==defPort){
+allFetches.push({url:apis[a].base+host+':'+defPort,src:apis[a].src,proxy:false});
+}
+}
+}
+
+var seen={};
+var uniqueFetches=[];
+for(var c=0;c<allFetches.length;c++){
+if(!seen[allFetches[c].url]){
+seen[allFetches[c].url]=true;
+uniqueFetches.push(allFetches[c]);
+}
+}
+
+var promises=uniqueFetches.map(function(item){
+return tryFetch(item.url,15000).then(function(d){
+return{data:d,src:item.src,url:item.url};
+});
+});
+
+var settled=await Promise.all(promises);
+var anyResponse=false;
+
+for(var i=0;i<settled.length;i++){
+var s=settled[i];
+if(s.data)anyResponse=true;
+if(s.data&&(s.data.online||s.data.ip)){
+if(s.data.online){
+var srcBase=s.src.replace(/\d+$/,'');
+s.data._src=srcBase==='mcsrvstat'?'mcsrvstat':s.src;
+var alreadyHasSrc=false;
+for(var r=0;r<results.length;r++){
+var rBase=results[r]._src.replace(/\d+$/,'');
+if(rBase===srcBase)alreadyHasSrc=true;
+}
+if(!alreadyHasSrc)results.push(s.data);
+}
+}
+}
+
+if(!anyResponse){
+var proxyFetches=[];
+for(var pf=0;pf<uniqueFetches.length;pf++){
+proxyFetches.push({url:uniqueFetches[pf].url,src:uniqueFetches[pf].src});
+}
+var proxyPromises=proxyFetches.map(function(item){
+return fetchWithProxy(item.url,18000).then(function(d){
+return{data:d,src:item.src};
+});
+});
+var proxySettled=await Promise.all(proxyPromises);
+for(var pi=0;pi<proxySettled.length;pi++){
+var ps=proxySettled[pi];
+if(ps.data&&(ps.data.online||ps.data.ip)){
+if(ps.data.online){
+var pSrcBase=ps.src.replace(/\d+$/,'');
+ps.data._src=pSrcBase==='mcsrvstat'?'mcsrvstat':ps.src;
+var pAlready=false;
+for(var pr=0;pr<results.length;pr++){
+var prBase=results[pr]._src.replace(/\d+$/,'');
+if(prBase===pSrcBase)pAlready=true;
+}
+if(!pAlready)results.push(ps.data);
+}
+}
+}
+}
+
+if(results.length===0){
+var altType=type==='bedrock'?'java':'bedrock';
+var altApis=[];
+if(altType==='bedrock'){
+altApis.push({base:'https://api.mcsrvstat.us/bedrock/3/',src:'mcsrvstat'});
+altApis.push({base:'https://api.mcstatus.io/v2/status/bedrock/',src:'mcstatus'});
+altApis.push({base:'https://api.mcsrvstat.us/bedrock/2/',src:'mcsrvstat2'});
+}else{
+altApis.push({base:'https://api.mcsrvstat.us/3/',src:'mcsrvstat'});
+altApis.push({base:'https://api.mcstatus.io/v2/status/java/',src:'mcstatus'});
+altApis.push({base:'https://api.mcsrvstat.us/2/',src:'mcsrvstat2'});
+}
+
+var altFetches=[];
+for(var aa=0;aa<altApis.length;aa++){
+if(hostIsDomain){
+altFetches.push({url:altApis[aa].base+host,src:altApis[aa].src});
+}
+altFetches.push({url:altApis[aa].base+host+':'+port,src:altApis[aa].src});
+}
+
+var altSeen={};
+var altUnique=[];
+for(var d=0;d<altFetches.length;d++){
+if(!altSeen[altFetches[d].url]){
+altSeen[altFetches[d].url]=true;
+altUnique.push(altFetches[d]);
+}
+}
+
+var altPromises=altUnique.map(function(item){
+return fetchWithProxy(item.url,18000).then(function(dd){
+return{data:dd,src:item.src};
+});
+});
+
+var altSettled=await Promise.all(altPromises);
+for(var j=0;j<altSettled.length;j++){
+if(altSettled[j].data&&altSettled[j].data.online){
+altSettled[j].data._src=altSettled[j].src;
+altSettled[j].data._switchedType=altType;
+results.push(altSettled[j].data);
+break;
+}
+}
+}
+
+return mergeResults(results,type);
+}
+
+function mergeResults(results,type){
+if(results.length===0)return{online:false};
+
+var merged={online:true,_plugins:[],_mods:[]};
+
+for(var i=0;i<results.length;i++){
+var d=results[i];
+var src=d._src;
+
+if(d._switchedType)merged._switchedType=d._switchedType;
+
+if(src==='mcsrvstat'){
+if(!merged.motd&&d.motd)merged.motd=getMotd(d.motd);
+if(!merged.version&&d.version)merged.version=typeof d.version==='string'?d.version:(d.version.name||'');
+if(!merged.players&&d.players)merged.players={online:d.players.online,max:d.players.max,list:d.players.list||[]};
+if(!merged.software&&d.software)merged.software=typeof d.software==='string'?d.software:(d.software.name||'');
+if(!merged.gamemode&&d.gamemode)merged.gamemode=d.gamemode;
+if(!merged.map&&d.map)merged.map=typeof d.map==='string'?d.map:(d.map.name||d.map.clean||'');
+if(!merged.hostname&&d.hostname)merged.hostname=d.hostname;
+if(!merged.ip&&d.ip)merged.ip=d.ip;
+if(!merged.port&&d.port)merged.port=d.port;
+if(d.plugins){
+var pArr=d.plugins;
+if(typeof pArr==='object'&&!Array.isArray(pArr)){
+var keys=Object.keys(pArr);
+keys.forEach(function(k){
+var items=pArr[k];
+if(Array.isArray(items)){
+items.forEach(function(pp){
+var n=typeof pp==='object'?(pp.name+(pp.version?' v'+pp.version:'')):String(pp);
+if(n&&merged._plugins.indexOf(n)===-1)merged._plugins.push(n);
+});
+}else if(typeof items==='string'){
+if(merged._plugins.indexOf(items)===-1)merged._plugins.push(items);
+}else{
+var nn=String(k);
+if(nn&&merged._plugins.indexOf(nn)===-1)merged._plugins.push(nn);
+}
+});
+}else if(Array.isArray(pArr)){
+pArr.forEach(function(p){
+var n=typeof p==='object'?(p.name+(p.version?' v'+p.version:'')):String(p);
+if(n&&merged._plugins.indexOf(n)===-1)merged._plugins.push(n);
+});
+}
+}
+if(d.mods){
+var mArr=d.mods;
+if(typeof mArr==='object'&&!Array.isArray(mArr)){
+Object.keys(mArr).forEach(function(k){
+if(merged._mods.indexOf(k)===-1)merged._mods.push(k);
+});
+}else if(Array.isArray(mArr)){
+mArr.forEach(function(m){
+var n=typeof m==='object'?(m.name+(m.version?' v'+m.version:'')):String(m);
+if(n&&merged._mods.indexOf(n)===-1)merged._mods.push(n);
+});
+}
+}
+}
+
+if(src==='mcstatus'){
+if(!merged.motd&&d.motd){
+merged.motd=d.motd.clean||d.motd.raw||'';
+if(Array.isArray(merged.motd))merged.motd=merged.motd.join('\n');
+merged.motd=stripMc(merged.motd);
+}
+if(!merged.version&&d.version){
+merged.version=d.version.name_clean||d.version.name_raw||'';
+}
+if(!merged.players&&d.players){
+merged.players={online:d.players.online,max:d.players.max,list:[]};
+if(d.players.list&&d.players.list.length>0){
+merged.players.list=d.players.list.map(function(p){
+return typeof p==='object'?(p.name_clean||p.name_raw||p.name||''):String(p);
+});
+}
+}
+if(!merged.software&&d.software){
+var sw=typeof d.software==='string'?d.software:'';
+if(typeof d.software==='object'){
+sw=d.software.name||'';
+if(d.software.version)sw+=' '+d.software.version;
+}
+merged.software=sw;
+}
+if(!merged.gamemode&&d.gamemode)merged.gamemode=typeof d.gamemode==='string'?d.gamemode:(d.gamemode.name||'');
+if(!merged.map&&d.map){
+merged.map=typeof d.map==='string'?d.map:(d.map.clean||d.map.name||'');
+}
+if(!merged.hostname&&d.host)merged.hostname=d.host;
+if(!merged.ip&&d.ip_address)merged.ip=d.ip_address;
+if(!merged.ip&&d.ip)merged.ip=d.ip;
+if(!merged.port&&d.port)merged.port=d.port;
+if(d.plugins&&d.plugins.length>0){
+d.plugins.forEach(function(p){
+var n=typeof p==='object'?(p.name+(p.version?' v'+p.version:'')):String(p);
+if(n&&merged._plugins.indexOf(n)===-1)merged._plugins.push(n);
+});
+}
+if(d.mods&&d.mods.length>0){
+d.mods.forEach(function(m){
+var n=typeof m==='object'?(m.name+(m.version?' v'+m.version:'')):String(m);
+if(n&&merged._mods.indexOf(n)===-1)merged._mods.push(n);
+});
+}
+if(d.srv_record&&d.srv_record.host&&!merged.srvHost){
+merged.srvHost=d.srv_record.host;
+}
+}
+}
+
+return merged;
+}
+
+async function getIpInfo(host){
+var result={org:'',provider:'',ip:'',country:'',city:'',timezone:''};
+var targetIp=host;
+
+try{
+var dns=await fetchWithProxy('https://dns.google/resolve?name='+encodeURIComponent(host)+'&type=A',8000);
+if(dns&&dns.Answer){
+for(var i=0;i<dns.Answer.length;i++){
+if(dns.Answer[i].type===1){
+targetIp=dns.Answer[i].data;
+result.ip=targetIp;
+break;
+}
+}
+}
+}catch(e){}
+
+var p1=fetchWithProxy('https://ipapi.co/'+encodeURIComponent(targetIp)+'/json/',8000);
+var p2=fetchWithProxy('http://ip-api.com/json/'+encodeURIComponent(targetIp)+'?fields=status,country,city,timezone,isp,org,as,query',8000);
+var p3=fetchWithProxy('https://ipwho.is/'+encodeURIComponent(targetIp),8000);
+var p4=fetchWithProxy('https://freeipapi.com/api/json/'+encodeURIComponent(targetIp),8000);
+
+var all=await Promise.all([p1,p2,p3,p4]);
+var d1=all[0];
+var d2=all[1];
+var d3=all[2];
+var d4=all[3];
+
+if(d1&&!d1.error){
+if(d1.org)result.org=d1.org;
+if(d1.asn){
+result.provider=d1.asn;
+if(d1.org)result.provider=d1.asn+' / '+d1.org;
+}
+if(d1.country_name)result.country=d1.country_name;
+if(d1.city)result.city=d1.city;
+if(d1.timezone)result.timezone=d1.timezone;
+if(d1.ip)result.ip=d1.ip;
+}
+
+if(d2&&d2.status==='success'){
+if(!result.org&&d2.org)result.org=d2.org;
+if(!result.org&&d2.isp)result.org=d2.isp;
+if(!result.provider){
+if(d2.isp)result.provider=d2.as?(d2.as+' / '+d2.isp):d2.isp;
+else if(d2.as)result.provider=d2.as;
+}
+if(!result.country&&d2.country)result.country=d2.country;
+if(!result.city&&d2.city)result.city=d2.city;
+if(!result.timezone&&d2.timezone)result.timezone=d2.timezone;
+if(!result.ip&&d2.query)result.ip=d2.query;
+}
+
+if(d3&&d3.success){
+if(!result.org&&d3.connection&&d3.connection.org)result.org=d3.connection.org;
+if(!result.provider&&d3.connection){
+var isp=d3.connection.isp||'';
+var asn=d3.connection.asn?'AS'+d3.connection.asn:'';
+if(isp&&asn)result.provider=asn+' / '+isp;
+else if(isp)result.provider=isp;
+else if(asn)result.provider=asn;
+}
+if(!result.country&&d3.country)result.country=d3.country;
+if(!result.city&&d3.city)result.city=d3.city;
+if(!result.timezone&&d3.timezone&&d3.timezone.id)result.timezone=d3.timezone.id;
+if(!result.ip&&d3.ip)result.ip=d3.ip;
+}
+
+if(d4&&d4.ipAddress){
+if(!result.org&&d4.isp)result.org=d4.isp;
+if(!result.provider&&d4.isp)result.provider=d4.isp;
+if(!result.country&&d4.countryName)result.country=d4.countryName;
+if(!result.city&&d4.cityName)result.city=d4.cityName;
+if(!result.timezone&&d4.timeZone)result.timezone=d4.timeZone;
+if(!result.ip)result.ip=d4.ipAddress;
+}
+
+return result;
+}
+
+function formatPluginsMods(data){
+var items=[].concat(data._plugins||[]).concat(data._mods||[]);
+if(items.length===0)return 'Скрыты сервером';
+var id='pl_'+Math.random().toString(36).substr(2,8);
+if(items.length<=5){
+return '<ul class="plugins-list">'+items.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul>';
+}
+var first5=items.slice(0,5);
+var rest=items.slice(5);
+var html='<ul class="plugins-list">'+first5.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul>';
+html+='<div class="plugins-hidden" id="'+id+'"><ul class="plugins-list">'+rest.map(function(i){return '<li>'+esc(i)+'</li>'}).join('')+'</ul></div>';
+html+='<span class="plugins-toggle" data-target="'+id+'" data-state="closed">Ещё '+rest.length+'</span>';
+return html;
+}
+
+function formatPlayers(data){
+if(!data.players||!data.players.list||data.players.list.length===0)return '';
+var names=data.players.list.map(function(p){
+return typeof p==='object'?(p.name||p.name_clean||''):String(p);
+}).filter(function(n){return n});
+if(names.length===0)return '';
+var shown=names.slice(0,12);
+var extra=names.length>12?' и ещё '+(names.length-12):'';
+return '<div class="players-inline">'+esc(shown.join(', '))+extra+'</div>';
+}
+
+function fmtResponse(data,host,port,type,ipInfo){
+var addr=host+':'+port;
+
+if(!data.online){
+return{
+html:'<span class="title fail">❌ Сервер оффлайн или недоступен</span>'+
+'<span class="sep"></span>'+
+'<span class="row">🌐 Адрес: <span class="ip">'+esc(addr)+'</span></span>'+
+'<span class="row" style="color:#4a5568;">Сервер не ответил на запрос. Проверьте адрес и порт.</span>',
+cls:'err',
+isOnline:false
+};
+}
+
+var actualType=data._switchedType||type;
+
+var motd=data.motd||'Недоступно';
+var version=data.version||'Недоступно';
+var gm=data.gamemode||'Недоступно';
+var mapName=data.map||'Недоступно';
+var on=data.players&&data.players.online!==undefined?data.players.online:'?';
+var mx=data.players&&data.players.max!==undefined?data.players.max:'?';
+var sw=data.software||'Недоступно';
+var org=ipInfo&&ipInfo.org?ipInfo.org:'Недоступно';
+var provider=ipInfo&&ipInfo.provider?ipInfo.provider:'Недоступно';
+var country=ipInfo&&ipInfo.country?ipInfo.country:'Недоступно';
+var city=ipInfo&&ipInfo.city?ipInfo.city:'Недоступно';
+var timezone=ipInfo&&ipInfo.timezone?ipInfo.timezone:'Недоступно';
+
+var titleCls=actualType==='bedrock'?'online-bedrock':'online-java';
+var tagName=actualType==='bedrock'?'Bedrock':'Java';
+var resCls=actualType==='bedrock'?'bedrock-ok':'java-ok';
+var plugins=formatPluginsMods(data);
+var playersList=formatPlayers(data);
+
+var h='<span class="title '+titleCls+'">'+tagName+'-сервер онлайн</span>'+
+'<span class="sep"></span>'+
+'<span class="row">👥 Организация: '+esc(org)+'</span>'+
+'<span class="row">🏢 Провайдер: '+esc(provider)+'</span>'+
+'<span class="row">🌍 Страна: '+esc(country)+'</span>'+
+'<span class="row">🏙 Город: '+esc(city)+'</span>'+
+'<span class="row">🕐 Часовой пояс: '+esc(timezone)+'</span>'+
+'<span class="row">🌐 Адрес: <span class="ip">'+esc(addr)+'</span></span>'+
+'<span class="row">🖥 Название: '+esc(motd)+'</span>'+
+'<span class="row">♨ Режим: '+esc(gm)+'</span>'+
+'<span class="row">🚀 Версия: <span class="ver">'+esc(version)+'</span></span>'+
+'<span class="row">💣 Ядро: '+esc(sw)+'</span>'+
+'<span class="row">🌍 Карта: '+esc(mapName)+'</span>'+
+'<span class="row">👥 Онлайн: <span class="hl">'+on+'</span> / <span class="hl">'+mx+'</span></span>'+
+playersList+
+'<span class="row">🧩 Плагины: '+plugins+'</span>';
+
+return{html:h,cls:resCls,isOnline:true};
+}
+
+function bindPluginToggles(container){
+var toggles=container.querySelectorAll('.plugins-toggle');
+toggles.forEach(function(btn){
+btn.addEventListener('click',function(e){
+e.stopPropagation();
+e.preventDefault();
+var targetId=btn.getAttribute('data-target');
+var target=document.getElementById(targetId);
+if(!target)return;
+var state=btn.getAttribute('data-state');
+if(state==='closed'){
+target.style.height='auto';
+btn.setAttribute('data-state','open');
+btn.textContent='Скрыть';
+}else{
+target.style.height='0px';
+btn.setAttribute('data-state','closed');
+var count=target.querySelectorAll('li').length;
+btn.textContent='Ещё '+count;
+}
+});
+});
+}
+
+function addRetryBtn(container,cmdText){
+var btn=document.createElement('button');
+btn.className='retry-btn';
+btn.textContent='Повторить запрос';
+btn.addEventListener('click',function(){
+if(busy)return;
+var p=parseCmd(cmdText);
+if(p.ok){
+doQuery(p.type,p.host,p.port,cmdText,true);
+}
+});
+var body=container.querySelector('.msg-body');
+if(body)body.appendChild(btn);
+}
+
+async function doQuery(type,host,port,cmdText,showUser){
+if(busy)return;
+busy=true;
+sendBtn.disabled=true;
+
+if(showUser){
+addMsg(esc(cmdText),'user');
+}
+
+lastCmd=cmdText;
+addLoading();
+
+try{
+var dataPromise=queryServer(type,host,port);
+var ipPromise=getIpInfo(host);
+var results=await Promise.all([dataPromise,ipPromise]);
+var data=results[0];
+var ipInfo=results[1];
+removeLoading();
+var res=fmtResponse(data,host,port,type,ipInfo);
+var m=addMsg(res.html,'bot',res.cls);
+animRows(m);
+bindPluginToggles(m);
+if(res.isOnline){
+addRetryBtn(m,cmdText);
+}
+}catch(e){
+removeLoading();
+addMsg('<span class="title fail">❌ Ошибка соединения</span><span class="sep"></span><span class="row" style="font-size:12px;">Не удалось связаться с API. Попробуйте позже.</span>','bot','err');
+}
+
+busy=false;
+sendBtn.disabled=false;
+}
+
+async function send(){
+var text=inp.value.trim();
+if(!text||busy)return;
+inp.value='';
+inp.blur();
+
+var p=parseCmd(text);
+
+if(!p.ok){
+addMsg(esc(text),'user');
+setTimeout(function(){
+if(p.noAddr){
+addMsg('<span class="title fail">❌ Укажите адрес сервера</span><span class="sep"></span><span style="font-size:12px;">Формат: <span class="ip">'+esc(p.cmd)+' ip:port</span></span>','bot','err');
+}else{
+addMsg('<span class="title fail">❌ Такой команды не существует</span><span class="sep"></span><span style="font-size:12px;">Используйте <span class="ip">/mcbe</span> или <span class="ip">/mcja</span></span>','bot','err');
+}
+},150);
+return;
+}
+
+var cmdText='/'+(p.type==='bedrock'?'mcbe':'mcja')+' '+p.host+':'+p.port;
+await doQuery(p.type,p.host,p.port,cmdText,true);
+}
+
+sendBtn.addEventListener('click',send);
+inp.addEventListener('keydown',function(e){
+if(e.key==='Enter'){e.preventDefault();send()}
+});
+
+function handleResize(){
+setTimeout(scrollDown,100);
+setTimeout(scrollDown,300);
+}
+
+if(window.visualViewport){
+window.visualViewport.addEventListener('resize',function(){
+document.body.style.height=window.visualViewport.height+'px';
+handleResize();
+});
+window.visualViewport.addEventListener('scroll',function(){
+document.body.style.height=window.visualViewport.height+'px';
+inputBar.style.transform='translateY(0)';
+});
+}else{
+window.addEventListener('resize',handleResize);
+}
+
+inp.addEventListener('focus',function(){
+setTimeout(function(){
+scrollDown();
+if(window.visualViewport){
+document.body.style.height=window.visualViewport.height+'px';
+}
+},300);
+setTimeout(scrollDown,500);
+});
+
+welcome();
+</script>
+
+</body>
+</html>
